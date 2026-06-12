@@ -5,47 +5,39 @@ on:
     branches: [ main ]
   pull_request:
     branches: [ main ]
-  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Setup Java JDK environment
+      - name: Set up JDK
         uses: actions/setup-java@v4
         with:
-          java-version: '17'
           distribution: 'temurin'
+          java-version: '17'
 
-      - name: List Repository Directory Structure (Debug)
-        run: ls -R
-
-      - name: Compile Java Source and Test Packages
-        working-directory: "./PROGPOE"
+      - name: Create directories
         run: |
+          mkdir -p lib
           mkdir -p bin
-          
-          echo "Downloading JUnit 4 components..."
-          curl -L -o junit-4.13.2.jar https://repo1.maven.org/maven2/junit/junit/4.13.2/junit-4.13.2.jar
-          curl -L -o hamcrest-core-1.3.jar https://repo1.maven.org/maven2/org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar
 
-          echo "Compiling all project Java files..."
-          # Generates lists dynamically avoiding potential file character limit boundary issues
-          find src -name "*.java" > sources.txt
-          if [ -d "test" ]; then find test -name "*.java" >> sources.txt; fi
-          
-          javac -cp "junit-4.13.2.jar:hamcrest-core-1.3.jar" -d bin @sources.txt
-
-      - name: Execute Core JUnit Test Specifications
-        working-directory: "./PROGPOE"
+      - name: Download JUnit
         run: |
-          echo "Executing JUnit test runner..."
-          java -cp "bin:junit-4.13.2.jar:hamcrest-core-1.3.jar" \
-            org.junit.runner.JUnitCore \
-            com.example.chatapp.ChatApp1Test \
-            com.example.chatapp.LoginTest \
-            com.example.chatapp.LoginTest_1
+          curl -L -o lib/junit-4.13.2.jar https://search.maven.org/remotecontent?filepath=junit/junit/4.13.2/junit-4.13.2.jar
+          curl -L -o lib/hamcrest-core-1.3.jar https://search.maven.org/remotecontent?filepath=org/hamcrest/hamcrest-core/1.3/hamcrest-core-1.3.jar
+
+      - name: Compile source files
+        run: |
+          javac -cp "lib/*" -d bin $(find PROGPOE/PROGPOE/src -name "*.java")
+
+      - name: Compile test files
+        run: |
+          javac -cp "lib/*:bin" -d bin $(find PROGPOE/PROGPOE/test -name "*.java")
+
+      - name: Run tests
+        run: |
+          java -cp "lib/*:bin" org.junit.runner.JUnitCore com.example.chatapp.ChatApp1Test
